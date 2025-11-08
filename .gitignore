@@ -1,0 +1,15 @@
+# Python compiled files
+*.pyc
+__pycache__/
+
+# Django database
+db.sqlite3
+
+# Environment variables
+.env
+
+# VS Code files
+.vscode/
+
+# Mac system files
+.DS_Store
