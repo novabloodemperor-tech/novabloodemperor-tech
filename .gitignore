@@ -1,15 +1,15 @@
-# Python compiled files
+# Ignore compiled Python files
 *.pyc
 __pycache__/
 
-# Django database
+# Ignore Django database
 db.sqlite3
 
-# Environment variables
+# Ignore environment variables
 .env
 
-# VS Code files
+# Ignore editor settings
 .vscode/
 
-# Mac system files
+# Ignore system files
 .DS_Store
