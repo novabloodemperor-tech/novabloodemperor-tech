@@ -51,8 +51,6 @@ def check_eligibility(request):
     eligible_programmes = []
     for programme in test_programmes:
         if user_cluster_points >= programme['cluster_points']:
-            # For now, just check cluster points
-            # Add subject requirement logic later
             eligible_programmes.append(programme)
     
     return Response({
