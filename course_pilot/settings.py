@@ -141,7 +141,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
-    "https://your-frontend-domain.com",  # Your frontend URL
+    "https://thecoursepilot.netlify.app",  # Your frontend URL
     "http://localhost:3000",  # React dev server
     "http://127.0.0.1:3000",  # React dev server
     "http://localhost:8000",  # Django dev server
@@ -149,3 +149,11 @@ CORS_ALLOWED_ORIGINS = [
 
 # Or allow all origins (for development only)
 CORS_ALLOW_ALL_ORIGINS = True  # Remove this in production
+
+# Additional CORS settings
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-requested-with',
+]
