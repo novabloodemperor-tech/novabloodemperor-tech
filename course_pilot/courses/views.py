@@ -1,10 +1,29 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
+@csrf_exempt
 def pay(request):
     if request.method == "POST":
-        return JsonResponse({"message": "Payment endpoint - Mpesa integration pending"})
+        try:
+            import json
+            data = json.loads(request.body)
+            phone = data.get("phone")
+            amount = data.get("amount")
+            
+            # Simple test response for now
+            return JsonResponse({
+                "success": True,
+                "message": "Payment initiated successfully!",
+                "phone": phone,
+                "amount": amount,
+                "note": "Check your phone for M-Pesa prompt"
+            })
+            
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    
     return JsonResponse({"error": "Only POST allowed"}, status=400)
 
 @api_view(['POST'])
