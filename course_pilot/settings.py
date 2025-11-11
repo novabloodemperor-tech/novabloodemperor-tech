@@ -53,9 +53,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework', 
     'course_pilot.courses',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -136,3 +138,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "https://your-frontend-domain.com",  # Your frontend URL
+    "http://localhost:3000",  # React dev server
+    "http://127.0.0.1:3000",  # React dev server
+    "http://localhost:8000",  # Django dev server
+]
+
+# Or allow all origins (for development only)
+CORS_ALLOW_ALL_ORIGINS = True  # Remove this in production
