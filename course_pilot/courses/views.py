@@ -9,49 +9,54 @@ def pay(request):
 
 @api_view(['POST'])
 def check_eligibility(request):
-    try:
-        data = request.data
-        
-        # Get user's grades and cluster points
-        user_grades = data.get('grades', {})
-        user_cluster_points = float(data.get('cluster_points', 0))
-        
-        # Temporary test response - replace with real logic later
-        eligible_programmes = []
-        
-        # Add some test programmes based on cluster points
-        if user_cluster_points >= 40:
-            eligible_programmes.append({
-                'programme_code': 'SC001',
-                'programme_name': 'Computer Science',
-                'university': 'University of Nairobi',
-                'cluster_points': user_cluster_points,
-                'required_cluster': 40
-            })
-        
-        if user_cluster_points >= 38:
-            eligible_programmes.append({
-                'programme_code': 'BA001',
-                'programme_name': 'Business Administration', 
-                'university': 'Kenyatta University',
-                'cluster_points': user_cluster_points,
-                'required_cluster': 38
-            })
-        
-        if user_cluster_points >= 42:
-            eligible_programmes.append({
-                'programme_code': 'ME001',
-                'programme_name': 'Medicine',
-                'university': 'University of Nairobi',
-                'cluster_points': user_cluster_points, 
-                'required_cluster': 42
-            })
-        
-        return Response({
-            'eligible_programmes': eligible_programmes,
-            'total_found': len(eligible_programmes),
-            'message': 'This is a test response. Connect database for real data.'
-        })
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=500)
+    data = request.data
+    
+    # Get user's grades and cluster points
+    user_grades = data.get('grades', {})
+    user_cluster_points = float(data.get('cluster_points', 0))
+    
+    # Test data - replace with database later
+    test_programmes = [
+        {
+            'programme_code': 'SC001',
+            'programme_name': 'Computer Science',
+            'university': 'University of Nairobi',
+            'cluster_points': 40,
+            'required_cluster': 40
+        },
+        {
+            'programme_code': 'BA001',
+            'programme_name': 'Business Administration',
+            'university': 'Kenyatta University', 
+            'cluster_points': 38,
+            'required_cluster': 38
+        },
+        {
+            'programme_code': 'ME001',
+            'programme_name': 'Medicine',
+            'university': 'University of Nairobi',
+            'cluster_points': 42,
+            'required_cluster': 42
+        },
+        {
+            'programme_code': 'EN001',
+            'programme_name': 'Engineering',
+            'university': 'JKUAT',
+            'cluster_points': 41,
+            'required_cluster': 41
+        }
+    ]
+    
+    # Filter programmes by cluster points
+    eligible_programmes = []
+    for programme in test_programmes:
+        if user_cluster_points >= programme['cluster_points']:
+            # For now, just check cluster points
+            # Add subject requirement logic later
+            eligible_programmes.append(programme)
+    
+    return Response({
+        'eligible_programmes': eligible_programmes,
+        'total_found': len(eligible_programmes),
+        'message': 'Demo data - Connect database for real course information'
+    })
