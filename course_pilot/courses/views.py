@@ -1,6 +1,21 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Programme, SubjectRequirement
+from django.http import JsonResponse
+from .mpesa import stk_push
+
+def pay(request):
+    if request.method == "POST":
+        import json
+        data = json.loads(request.body)
+        phone = data.get("phone")
+        amount = data.get("amount")
+        account_ref = data.get("account_ref", "Test123")
+        description = data.get("desc", "Payment")
+
+        res = stk_push(phone, amount, account_ref, description)
+        return JsonResponse(res)
+    return JsonResponse({"error": "Only POST allowed"}, status=400)
 
 @api_view(['POST'])
 def check_eligibility(request):

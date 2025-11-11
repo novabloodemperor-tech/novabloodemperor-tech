@@ -1,6 +1,8 @@
+
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('check-eligibility/', views.check_eligibility, name='check_eligibility'),
+    path("pay/", views.pay, name="mpesa-pay"),
 ]
+
