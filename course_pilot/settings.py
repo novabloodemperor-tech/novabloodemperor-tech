@@ -36,7 +36,11 @@ _allowed = os.getenv("ALLOWED_HOSTS", "")
 if _allowed:
     ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()]
 else:
-    ALLOWED_HOSTS = []
+    ALLOWED_HOSTS = [
+    'novabloodemperor-tech-backend.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 
 # Application definition
 
@@ -48,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework', 
-    'course_pilot.courses.apps.CoursesConfig',
+    'courses',
 ]
 
 MIDDLEWARE = [
