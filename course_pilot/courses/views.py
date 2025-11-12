@@ -60,27 +60,22 @@ def check_eligibility(request):
     
     eligible_programmes = []
     
-    # Check all programmes in database
+    # Simple test - just check cluster points for now
     for programme in Programme.objects.all():
-        # Check cluster points
         if user_cluster_points >= programme.cluster_points:
-            # Check subject requirements
-            requirements = SubjectRequirement.objects.filter(programme=programme).first()
-            if requirements and meets_subject_requirements(requirements, user_grades):
-                eligible_programmes.append({
-                    'programme_code': programme.programme_code,
-                    'programme_name': programme.programme_name,
-                    'university': programme.university,
-                    'cluster_points': programme.cluster_points,
-                    'required_cluster': programme.cluster_points
-                })
+            eligible_programmes.append({
+                'programme_code': programme.programme_code,
+                'programme_name': programme.programme_name,
+                'university': programme.university,
+                'cluster_points': programme.cluster_points,
+                'required_cluster': programme.cluster_points
+            })
     
     return Response({
         'eligible_programmes': eligible_programmes,
         'total_found': len(eligible_programmes),
         'message': 'Based on official KUCCPS placement data'
-    })
-    # Filter programmes by cluster points
+    })    # Filter programmes by cluster points
     eligible_programmes = []
     for programme in test_programmes:
         if user_cluster_points >= programme['cluster_points']:
