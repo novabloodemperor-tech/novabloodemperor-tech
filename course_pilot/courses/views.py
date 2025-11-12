@@ -1,6 +1,9 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
+from .pdf_utils import generate_courses_pdf
+from django.http import HttpResponse
+
 
 @api_view(['POST'])
 def pay(request):
@@ -29,6 +32,7 @@ def pay(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+
 @api_view(['POST'])
 def download_courses_pdf(request):
     try:
@@ -36,14 +40,16 @@ def download_courses_pdf(request):
         user_points = request.data.get('user_points', '')
         user_grades = request.data.get('user_grades', {})
         
-        return Response({
-            "error": "PDF feature coming soon",
-            "message": "PDF download will be available in the next update"
-        }, status=503)
+        # Generate PDF
+        pdf_content = generate_courses_pdf(eligible_programmes, user_points, user_grades)
+        
+        # Create HTTP response with PDF
+        response = HttpResponse(pdf_content, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="coursepilot_courses.pdf"'
+        return response
         
     except Exception as e:
         return Response({"error": str(e)}, status=500)
-
 @api_view(['POST'])
 def check_eligibility(request):
     data = request.data
