@@ -3,7 +3,34 @@ from rest_framework.response import Response
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from .pdf_utils import generate_courses_pdf
+from django.http import HttpResponse
+
 @csrf_exempt
+def download_courses_pdf(request):
+    if request.method == "POST":
+        try:
+            import json
+            data = json.loads(request.body)
+            
+            eligible_programmes = data.get('eligible_programmes', [])
+            user_points = data.get('user_points', '')
+            user_grades = data.get('user_grades', {})
+            
+            # Generate PDF
+            pdf_content = generate_courses_pdf(eligible_programmes, user_points, user_grades)
+            
+            # Create HTTP response with PDF
+            response = HttpResponse(pdf_content, content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="coursepilot_courses.pdf"'
+            return response
+            
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    
+    return JsonResponse({"error": "Only POST allowed"}, status=400)
+
+
 
 def pay(request):
     if request.method == "POST":
@@ -33,7 +60,9 @@ def pay(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     
-    return JsonResponse({"error": "Only POST allowed"}, status=400)@api_view(['POST'])
+        return JsonResponse({"error": "Only POST allowed"}, status=400)
+
+@api_view(['POST'])
 def check_eligibility(request):
     data = request.data
     
