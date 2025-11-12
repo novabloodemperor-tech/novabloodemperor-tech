@@ -1,66 +1,48 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
-from .pdf_utils import generate_courses_pdf
-from django.http import HttpResponse
-
-@csrf_exempt
-def download_courses_pdf(request):
-    if request.method == "POST":
-        try:
-            import json
-            data = json.loads(request.body)
-            
-            eligible_programmes = data.get('eligible_programmes', [])
-            user_points = data.get('user_points', '')
-            user_grades = data.get('user_grades', {})
-            
-            # Generate PDF
-            pdf_content = generate_courses_pdf(eligible_programmes, user_points, user_grades)
-            
-            # Create HTTP response with PDF
-            response = HttpResponse(pdf_content, content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="coursepilot_courses.pdf"'
-            return response
-            
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-    
-    return JsonResponse({"error": "Only POST allowed"}, status=400)
-
-
-
+@api_view(['POST'])
 def pay(request):
-    if request.method == "POST":
-        try:
-            import json
-            data = json.loads(request.body)
-            phone = data.get("phone")
-            amount = data.get("amount")
-            
-            if not phone or not amount:
-                return JsonResponse({"error": "Phone and amount are required"}, status=400)
-            
-            # Format phone number
-            if phone.startswith('0'):
-                phone = '254' + phone[1:]
-            elif phone.startswith('+'):
-                phone = phone[1:]
-            
-            account_ref = data.get("account_ref", "CoursePilot")
-            description = data.get("desc", "Course Matching Service")
-            
-            # Call real M-Pesa
-            from .mpesa import stk_push
-            res = stk_push(phone, amount, account_ref, description)
-            return JsonResponse(res)
-            
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-    
-        return JsonResponse({"error": "Only POST allowed"}, status=400)
+    try:
+        phone = request.data.get("phone")
+        amount = request.data.get("amount")
+        
+        if not phone or not amount:
+            return Response({"error": "Phone and amount are required"}, status=400)
+        
+        # Format phone number
+        if phone.startswith('0'):
+            phone = '254' + phone[1:]
+        elif phone.startswith('+'):
+            phone = phone[1:]
+        
+        # Simple test response
+        return Response({
+            "success": True,
+            "message": "Payment initiated successfully!",
+            "phone": phone,
+            "amount": amount,
+            "transaction_id": "TEST_12345"
+        })
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+@api_view(['POST'])
+def download_courses_pdf(request):
+    try:
+        eligible_programmes = request.data.get('eligible_programmes', [])
+        user_points = request.data.get('user_points', '')
+        user_grades = request.data.get('user_grades', {})
+        
+        return Response({
+            "error": "PDF feature coming soon",
+            "message": "PDF download will be available in the next update"
+        }, status=503)
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
 
 @api_view(['POST'])
 def check_eligibility(request):
@@ -70,7 +52,7 @@ def check_eligibility(request):
     user_grades = data.get('grades', {})
     user_cluster_points = float(data.get('cluster_points', 0))
     
-    # Test data - replace with database later
+    # Test data
     test_programmes = [
         {
             'programme_code': 'SC001',
