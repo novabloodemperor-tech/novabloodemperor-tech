@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
+
 def pay(request):
     if request.method == "POST":
         try:
@@ -12,21 +13,27 @@ def pay(request):
             phone = data.get("phone")
             amount = data.get("amount")
             
-            # Simple test response for now
-            return JsonResponse({
-                "success": True,
-                "message": "Payment initiated successfully!",
-                "phone": phone,
-                "amount": amount,
-                "note": "Check your phone for M-Pesa prompt"
-            })
+            if not phone or not amount:
+                return JsonResponse({"error": "Phone and amount are required"}, status=400)
+            
+            # Format phone number
+            if phone.startswith('0'):
+                phone = '254' + phone[1:]
+            elif phone.startswith('+'):
+                phone = phone[1:]
+            
+            account_ref = data.get("account_ref", "CoursePilot")
+            description = data.get("desc", "Course Matching Service")
+            
+            # Call real M-Pesa
+            from .mpesa import stk_push
+            res = stk_push(phone, amount, account_ref, description)
+            return JsonResponse(res)
             
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     
-    return JsonResponse({"error": "Only POST allowed"}, status=400)
-
-@api_view(['POST'])
+    return JsonResponse({"error": "Only POST allowed"}, status=400)@api_view(['POST'])
 def check_eligibility(request):
     data = request.data
     

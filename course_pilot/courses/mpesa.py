@@ -1,63 +1,58 @@
-# course_pilot/courses/mpesa.py
 import requests
 import base64
+from datetime import datetime
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-CONSUMER_KEY = os.getenv("CONSUMER_KEY")
-CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
-MPESA_ENV = "sandbox"  # or "production" later
 
 def get_access_token():
-    """
-    Generate M-Pesa access token
-    """
-    if MPESA_ENV == "sandbox":
-        url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-    else:
-        url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-
-    r = requests.get(url, auth=(CONSUMER_KEY, CONSUMER_SECRET))
-    token = r.json().get("access_token")
-    return token
-
-def stk_push(phone_number, amount, account_reference, transaction_desc):
-    """
-    Trigger an M-Pesa STK push
-    """
-    token = get_access_token()
+    consumer_key = os.getenv('MPESA_CONSUMER_KEY')
+    consumer_secret = os.getenv('MPESA_CONSUMER_SECRET')
     
-    if MPESA_ENV == "sandbox":
-        stk_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-        business_short_code = "174379"  # sandbox shortcode
-        passkey = os.getenv("MPESA_PASSKEY")  # from Safaricom sandbox
+    if not consumer_key or not consumer_secret:
+        raise Exception("M-Pesa credentials not configured")
+    
+    credentials = f"{consumer_key}:{consumer_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+    
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    headers = {"Authorization": f"Basic {encoded_credentials}"}
+    
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()['access_token']
     else:
-        stk_url = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-        business_short_code = "YOUR_PROD_SHORTCODE"
-        passkey = os.getenv("MPESA_PASSKEY")
+        raise Exception(f"Failed to get access token: {response.text}")
 
-    import datetime
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    password_str = f"{business_short_code}{passkey}{timestamp}"
-    password = base64.b64encode(password_str.encode()).decode("utf-8")
-
-    payload = {
-        "BusinessShortCode": business_short_code,
-        "Password": password,
-        "Timestamp": timestamp,
-        "TransactionType": "CustomerPayBillOnline",
-        "Amount": amount,
-        "PartyA": phone_number,
-        "PartyB": business_short_code,
-        "PhoneNumber": phone_number,
-        "CallBackURL": "https://yourfrontend.com/mpesa/callback/",  # set later
-        "AccountReference": account_reference,
-        "TransactionDesc": transaction_desc
-    }
-
-    headers = {"Authorization": f"Bearer {token}"}
-
-    response = requests.post(stk_url, json=payload, headers=headers)
-    return response.json()
+def stk_push(phone, amount, account_reference, transaction_desc):
+    try:
+        access_token = get_access_token()
+        shortcode = os.getenv('MPESA_BUSINESS_SHORTCODE', '174379')
+        passkey = os.getenv('MPESA_PASSKEY')
+        
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        password = base64.b64encode(f"{shortcode}{passkey}{timestamp}".encode()).decode()
+        
+        url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "BusinessShortCode": shortcode,
+            "Password": password,
+            "Timestamp": timestamp,
+            "TransactionType": "CustomerPayBillOnline",
+            "Amount": amount,
+            "PartyA": phone,
+            "PartyB": shortcode,
+            "PhoneNumber": phone,
+            "CallBackURL": os.getenv('MPESA_CALLBACK_URL', 'https://example.com/callback'),
+            "AccountReference": account_reference,
+            "TransactionDesc": transaction_desc
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        return response.json()
+        
+    except Exception as e:
+        return {"error": str(e)}
