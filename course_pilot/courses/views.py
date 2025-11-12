@@ -58,38 +58,28 @@ def check_eligibility(request):
     user_grades = data.get('grades', {})
     user_cluster_points = float(data.get('cluster_points', 0))
     
-    # Test data
-    test_programmes = [
-        {
-            'programme_code': 'SC001',
-            'programme_name': 'Computer Science',
-            'university': 'University of Nairobi',
-            'cluster_points': 40,
-            'required_cluster': 40
-        },
-        {
-            'programme_code': 'BA001',
-            'programme_name': 'Business Administration',
-            'university': 'Kenyatta University', 
-            'cluster_points': 38,
-            'required_cluster': 38
-        },
-        {
-            'programme_code': 'ME001',
-            'programme_name': 'Medicine',
-            'university': 'University of Nairobi',
-            'cluster_points': 42,
-            'required_cluster': 42
-        },
-        {
-            'programme_code': 'EN001',
-            'programme_name': 'Engineering',
-            'university': 'JKUAT',
-            'cluster_points': 41,
-            'required_cluster': 41
-        }
-    ]
+    eligible_programmes = []
     
+    # Check all programmes in database
+    for programme in Programme.objects.all():
+        # Check cluster points
+        if user_cluster_points >= programme.cluster_points:
+            # Check subject requirements
+            requirements = SubjectRequirement.objects.filter(programme=programme).first()
+            if requirements and meets_subject_requirements(requirements, user_grades):
+                eligible_programmes.append({
+                    'programme_code': programme.programme_code,
+                    'programme_name': programme.programme_name,
+                    'university': programme.university,
+                    'cluster_points': programme.cluster_points,
+                    'required_cluster': programme.cluster_points
+                })
+    
+    return Response({
+        'eligible_programmes': eligible_programmes,
+        'total_found': len(eligible_programmes),
+        'message': 'Based on official KUCCPS placement data'
+    })
     # Filter programmes by cluster points
     eligible_programmes = []
     for programme in test_programmes:
