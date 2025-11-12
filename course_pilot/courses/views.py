@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
-from .pdf_utils import generate_courses_pdf
+#from .pdf_utils import generate_courses_pdf
 from django.http import HttpResponse
 
 
