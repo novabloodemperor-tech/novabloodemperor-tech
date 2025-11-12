@@ -42,6 +42,11 @@ else:
     '127.0.0.1',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://thecoursepilot.netlify.app',
+    'https://novabloodemperor-tech-backend.onrender.com',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -157,3 +162,6 @@ CORS_ALLOW_HEADERS = [
     'authorization',
     'x-requested-with',
 ]
+
+CSRF_COOKIE_SECURE = False
+CSRF_USE_SESSIONS = False
