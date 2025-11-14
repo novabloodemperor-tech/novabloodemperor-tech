@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
+import traceback
 
 @api_view(['POST'])
 def pay(request):
@@ -11,7 +12,6 @@ def pay(request):
         if not phone or not amount:
             return Response({"error": "Phone and amount are required"}, status=400)
         
-        # Simple test response
         return Response({
             "success": True,
             "message": "Payment initiated successfully!",
@@ -25,14 +25,10 @@ def pay(request):
 
 @api_view(['POST'])
 def download_courses_pdf(request):
-    try:
-        return Response({
-            "error": "PDF feature coming soon",
-            "message": "PDF download will be available in the next update"
-        }, status=503)
-        
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
+    return Response({
+        "error": "PDF feature coming soon",
+        "message": "PDF download will be available in the next update"
+    }, status=503)
 
 @api_view(['POST'])
 def check_eligibility(request):
@@ -43,8 +39,19 @@ def check_eligibility(request):
         user_grades = data.get('grades', {})
         user_cluster_points = float(data.get('cluster_points', 0))
         
-        # Import here to avoid circular imports
-        from .models import Programme
+        print("DEBUG: Starting eligibility check...")
+        
+        # Try to import Programme
+        try:
+            from .models import Programme
+            print(f"DEBUG: Programme import successful, count: {Programme.objects.count()}")
+        except Exception as e:
+            print(f"DEBUG: Programme import failed: {e}")
+            return Response({
+                'eligible_programmes': [],
+                'total_found': 0,
+                'message': f'Database error: {str(e)}'
+            }, status=500)
         
         eligible_programmes = []
         
@@ -60,6 +67,8 @@ def check_eligibility(request):
                     'required_cluster': programme.cluster_points
                 })
         
+        print(f"DEBUG: Found {len(eligible_programmes)} eligible programmes")
+        
         return Response({
             'eligible_programmes': eligible_programmes,
             'total_found': len(eligible_programmes),
@@ -67,8 +76,10 @@ def check_eligibility(request):
         })
         
     except Exception as e:
+        print(f"DEBUG: General error: {e}")
+        print(f"DEBUG: Traceback: {traceback.format_exc()}")
         return Response({
             'eligible_programmes': [],
             'total_found': 0,
-            'message': f'Error: {str(e)}'
+            'message': f'General error: {str(e)}'
         }, status=500)
