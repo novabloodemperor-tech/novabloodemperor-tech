@@ -1,6 +1,6 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 
 @api_view(['POST'])
 def pay(request):
@@ -26,14 +26,9 @@ def pay(request):
 @api_view(['POST'])
 def download_courses_pdf(request):
     try:
-        eligible_programmes = request.data.get('eligible_programmes', [])
-        user_points = request.data.get('user_points', '')
-        user_grades = request.data.get('user_grades', {})
-        
-        # Simple PDF response for now
         return Response({
-            "error": "PDF feature temporarily disabled",
-            "message": "PDF download will be available after reportlab fix"
+            "error": "PDF feature coming soon",
+            "message": "PDF download will be available in the next update"
         }, status=503)
         
     except Exception as e:
