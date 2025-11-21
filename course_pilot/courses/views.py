@@ -141,45 +141,118 @@ def download_courses_pdf(request):
             }, status=400)
         
         buffer = io.BytesIO()
-        p = canvas.Canvas(buffer)
+        p = canvas.Canvas(buffer, pagesize=letter)
+        
+        # Group courses by university
+        courses_by_university = {}
+        for programme in eligible_programmes:
+            university = programme.get('university', 'Unknown University')
+            if university not in courses_by_university:
+                courses_by_university[university] = []
+            courses_by_university[university].append(programme)
+        
+        # Sort universities alphabetically
+        sorted_universities = sorted(courses_by_university.keys())
         
         p.setTitle(f"Eligible Courses - {user_cluster_points} points")
         
-        p.setFont("Helvetica-Bold", 16)
+        # Title Page
+        p.setFont("Helvetica-Bold", 18)
         p.drawString(100, 750, "COURSE PILOT KENYA")
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(100, 730, "Eligible Courses Report")
+        p.setFont("Helvetica-Bold", 16)
+        p.drawString(100, 720, "Eligible Courses Report")
         
+        p.setFont("Helvetica", 12)
+        p.drawString(100, 680, f"Student Cluster Points: {user_cluster_points}")
+        p.drawString(100, 660, f"Total Eligible Courses: {len(eligible_programmes)}")
+        p.drawString(100, 640, f"Total Universities: {len(sorted_universities)}")
+        p.drawString(100, 620, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        # Add a summary table
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(100, 580, "Summary by University:")
         p.setFont("Helvetica", 10)
-        p.drawString(100, 700, f"Student Cluster Points: {user_cluster_points}")
-        p.drawString(100, 685, f"Total Eligible Courses: {len(eligible_programmes)}")
-        p.drawString(100, 670, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         
-        y_position = 640
-        p.setFont("Helvetica-Bold", 10)
-        p.drawString(100, y_position, "ELIGIBLE COURSES:")
-        y_position -= 20
-        
-        p.setFont("Helvetica", 8)
-        for i, programme in enumerate(eligible_programmes[:30], 1):
-            if y_position < 50:
-                p.showPage()
-                p.setFont("Helvetica", 8)
-                y_position = 750
-            
-            programme_name = programme.get('programme_name', 'N/A')[:50]
-            university = programme.get('university', 'N/A')[:40]
-            points = programme.get('cluster_points', 'N/A')
-            
-            p.drawString(120, y_position, f"{i}. {programme_name}")
-            p.drawString(140, y_position - 12, f"   University: {university}")
-            p.drawString(140, y_position - 24, f"   Required Points: {points}")
-            
-            y_position -= 40
+        y_position = 560
+        for i, university in enumerate(sorted_universities[:15]):  # Show first 15 on title page
+            course_count = len(courses_by_university[university])
+            p.drawString(120, y_position, f"• {university[:50]}: {course_count} courses")
+            y_position -= 15
+            if y_position < 100 and i < len(sorted_universities) - 1:
+                p.drawString(120, y_position, f"... and {len(sorted_universities) - 15} more universities")
+                break
         
         p.setFont("Helvetica-Oblique", 8)
-        p.drawString(100, 30, "Note: Verify with official KUCCPS portal.")
-        p.drawString(100, 15, "CoursePilot Kenya")
+        p.drawString(100, 50, "Note: Complete course list follows on next pages")
+        p.drawString(100, 35, "CoursePilot Kenya - Making Education Accessible")
+        
+        # Start new page for detailed courses
+        p.showPage()
+        
+        # Detailed courses by university
+        for university_index, university in enumerate(sorted_universities):
+            university_courses = courses_by_university[university]
+            
+            # Start new page for each university if needed
+            if university_index > 0:
+                p.showPage()
+            
+            # University header
+            p.setFont("Helvetica-Bold", 14)
+            p.drawString(100, 750, f"University: {university}")
+            p.setFont("Helvetica", 10)
+            p.drawString(100, 730, f"Number of eligible courses: {len(university_courses)}")
+            
+            # Course list
+            y_position = 700
+            p.setFont("Helvetica-Bold", 10)
+            p.drawString(100, y_position, "PROGRAMME NAME")
+            p.drawString(350, y_position, "CODE")
+            p.drawString(420, y_position, "POINTS")
+            y_position -= 20
+            
+            p.setFont("Helvetica", 8)
+            for i, programme in enumerate(university_courses):
+                if y_position < 50:  # Start new page if running out of space
+                    p.showPage()
+                    p.setFont("Helvetica-Bold", 10)
+                    p.drawString(100, 750, f"University: {university} (continued)")
+                    p.setFont("Helvetica-Bold", 10)
+                    p.drawString(100, 730, "PROGRAMME NAME")
+                    p.drawString(350, 730, "CODE")
+                    p.drawString(420, 730, "POINTS")
+                    y_position = 710
+                    p.setFont("Helvetica", 8)
+                
+                programme_name = programme.get('programme_name', 'N/A')[:60]
+                programme_code = programme.get('programme_code', 'N/A')[:15]
+                points = programme.get('cluster_points', 'N/A')
+                
+                # Draw programme details
+                p.drawString(100, y_position, f"{i+1}. {programme_name}")
+                p.drawString(350, y_position, programme_code)
+                p.drawString(420, y_position, str(points))
+                
+                y_position -= 12
+                
+                # Add small gap every 10 courses for readability
+                if (i + 1) % 10 == 0:
+                    y_position -= 5
+        
+        # Final page with footer
+        p.showPage()
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(100, 750, "REPORT SUMMARY")
+        p.setFont("Helvetica", 10)
+        p.drawString(100, 720, f"Total Universities: {len(sorted_universities)}")
+        p.drawString(100, 700, f"Total Eligible Courses: {len(eligible_programmes)}")
+        p.drawString(100, 680, f"Your Cluster Points: {user_cluster_points}")
+        p.drawString(100, 660, f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        p.setFont("Helvetica-Oblique", 8)
+        p.drawString(100, 50, "Important: This is a preliminary report. Always verify with official KUCCPS portal.")
+        p.drawString(100, 35, "CoursePilot Kenya - Making Education Accessible")
+        p.drawString(100, 20, "Contact: support@coursepilot.co.ke")
         
         p.showPage()
         p.save()
@@ -188,7 +261,7 @@ def download_courses_pdf(request):
         buffer.close()
         
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="courses_{user_cluster_points}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="all_courses_{user_cluster_points}_points.pdf"'
         response.write(pdf)
         
         return response
