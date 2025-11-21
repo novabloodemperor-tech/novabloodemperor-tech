@@ -1,7 +1,56 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.http import JsonResponse
-from .models import Programme
+import csv
+import os
+
+# Load all programmes from CSV file
+def load_all_programmes():
+    programmes = []
+    csv_file = "data/cleaned/KUCCPS_ClusterPoints_Cleaned.csv"
+    
+    if not os.path.exists(csv_file):
+        print(f"❌ CSV file not found: {csv_file}")
+        return programmes
+    
+    try:
+        with open(csv_file, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            next(reader)  # Skip header row
+            
+            for row_num, row in enumerate(reader, start=2):
+                if len(row) >= 5 and row[1] and row[3]:  # Check if has programme code and name
+                    try:
+                        programme_code = row[1].strip()
+                        programme_name = row[3].strip()
+                        university = row[2].strip()
+                        
+                        # Convert cluster points to float
+                        cluster_points_str = row[4].strip()
+                        if cluster_points_str and cluster_points_str != '-':
+                            cluster_points = float(cluster_points_str)
+                        else:
+                            cluster_points = 0.0
+                        
+                        programmes.append({
+                            'programme_code': programme_code,
+                            'programme_name': programme_name,
+                            'university': university,
+                            'cluster_points': cluster_points
+                        })
+                        
+                    except Exception as e:
+                        print(f⚠️ Skipping row {row_num}: {e}")
+                        continue
+        
+        print(f"✅ Loaded {len(programmes)} programmes from CSV")
+        return programmes
+        
+    except Exception as e:
+        print(f"❌ Error reading CSV: {e}")
+        return programmes
+
+# Load programmes once when the server starts
+ALL_PROGRAMMES = load_all_programmes()
 
 @api_view(['POST'])
 def check_eligibility(request):
@@ -9,20 +58,19 @@ def check_eligibility(request):
         data = request.data
         user_cluster_points = float(data.get('cluster_points', 0))
         
-        # Get ALL programmes from database
-        all_programmes = Programme.objects.all()
-        print(f"📊 Checking {all_programmes.count()} programmes from database")
+        print(f"🔍 Checking eligibility with {len(ALL_PROGRAMMES)} programmes")
+        print(f"📊 User cluster points: {user_cluster_points}")
         
         # Filter programmes by cluster points
         eligible_programmes = []
-        for programme in all_programmes:
-            if user_cluster_points >= programme.cluster_points:
+        for programme in ALL_PROGRAMMES:
+            if user_cluster_points >= programme['cluster_points']:
                 eligible_programmes.append({
-                    'programme_code': programme.programme_code,
-                    'programme_name': programme.programme_name,
-                    'university': programme.university,
-                    'cluster_points': programme.cluster_points,
-                    'required_cluster': programme.cluster_points
+                    'programme_code': programme['programme_code'],
+                    'programme_name': programme['programme_name'],
+                    'university': programme['university'],
+                    'cluster_points': programme['cluster_points'],
+                    'required_cluster': programme['cluster_points']
                 })
         
         print(f"🎯 Found {len(eligible_programmes)} eligible programmes")
@@ -30,8 +78,8 @@ def check_eligibility(request):
         return Response({
             'eligible_programmes': eligible_programmes,
             'total_found': len(eligible_programmes),
-            'database_total': all_programmes.count(),
-            'message': f'Found {len(eligible_programmes)} out of {all_programmes.count()} total courses'
+            'database_total': len(ALL_PROGRAMMES),
+            'message': f'Found {len(eligible_programmes)} courses matching your {user_cluster_points} cluster points'
         })
         
     except Exception as e:
@@ -39,8 +87,16 @@ def check_eligibility(request):
         return Response({
             'eligible_programmes': [],
             'total_found': 0,
-            'message': f'Database error: {str(e)}'
+            'message': f'Error: {str(e)}'
         }, status=500)
+
+@api_view(['GET'])
+def check_database(request):
+    return Response({
+        'total_programmes': len(ALL_PROGRAMMES),
+        'status': 'working',
+        'message': f'Using CSV data with {len(ALL_PROGRAMMES)} programmes'
+    })
 
 @api_view(['POST'])
 def pay(request):
@@ -61,33 +117,3 @@ def pay(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=500)
-
-@api_view(['GET'])
-def check_database(request):
-    """Check database status and contents"""
-    try:
-        total_programmes = Programme.objects.count()
-        
-        sample_programmes = []
-        for programme in Programme.objects.all()[:10]:  # First 10 programmes
-            sample_programmes.append({
-                'programme_code': programme.programme_code,
-                'programme_name': programme.programme_name,
-                'university': programme.university,
-                'cluster_points': programme.cluster_points
-            })
-        
-        return Response({
-            'total_programmes': total_programmes,
-            'sample_programmes': sample_programmes,
-            'status': 'working' if total_programmes > 0 else 'empty',
-            'message': f'Database has {total_programmes} programmes'
-        })
-        
-    except Exception as e:
-        return Response({
-            'total_programmes': 0,
-            'sample_programmes': [],
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
