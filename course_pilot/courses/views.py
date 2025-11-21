@@ -34,38 +34,54 @@ def download_courses_pdf(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+
 @api_view(['POST'])
 def check_eligibility(request):
     try:
         data = request.data
-        
+
         # Get user's grades and cluster points
         user_grades = data.get('grades', {})
         user_cluster_points = float(data.get('cluster_points', 0))
-        
+
         # Import here to avoid circular imports
-        from .models import Programme
-        
+        from .models import Programme, SubjectRequirement
+
         eligible_programmes = []
-        
+
         # Check all programmes in database
         for programme in Programme.objects.all():
-            # Check cluster points
+            # Check cluster points first
             if user_cluster_points >= programme.cluster_points:
-                eligible_programmes.append({
-                    'programme_code': programme.programme_code,
-                    'programme_name': programme.programme_name,
-                    'university': programme.university,
-                    'cluster_points': programme.cluster_points,
-                    'required_cluster': programme.cluster_points
-                })
-        
+                # Check if programme has subject requirements
+                requirements = SubjectRequirement.objects.filter(programme=programme).first()
+                
+                # If no specific requirements found, include the programme
+                if not requirements:
+                    eligible_programmes.append({
+                        'programme_code': programme.programme_code,
+                        'programme_name': programme.programme_name,
+                        'university': programme.university,
+                        'cluster_points': programme.cluster_points,
+                        'required_cluster': programme.cluster_points
+                    })
+                else:
+                    # For now, include programmes even if they have requirements
+                    # We'll implement proper subject checking later
+                    eligible_programmes.append({
+                        'programme_code': programme.programme_code,
+                        'programme_name': programme.programme_name,
+                        'university': programme.university,
+                        'cluster_points': programme.cluster_points,
+                        'required_cluster': programme.cluster_points
+                    })
+
         return Response({
             'eligible_programmes': eligible_programmes,
             'total_found': len(eligible_programmes),
-            'message': 'Based on official KUCCPS placement data'
+            'message': f'Found {len(eligible_programmes)} courses matching your cluster points'
         })
-        
+
     except Exception as e:
         return Response({
             'eligible_programmes': [],
