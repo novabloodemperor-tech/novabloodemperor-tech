@@ -9,7 +9,7 @@ def load_all_programmes():
     csv_file = "data/cleaned/KUCCPS_ClusterPoints_Cleaned.csv"
     
     if not os.path.exists(csv_file):
-        print(f"❌ CSV file not found: {csv_file}")
+        print("CSV file not found:", csv_file)
         return programmes
     
     try:
@@ -39,14 +39,14 @@ def load_all_programmes():
                         })
                         
                     except Exception as e:
-                        print(f⚠️ Skipping row {row_num}: {e}")
+                        print("Skipping row", row_num, ":", e)
                         continue
         
-        print(f"✅ Loaded {len(programmes)} programmes from CSV")
+        print("Loaded", len(programmes), "programmes from CSV")
         return programmes
         
     except Exception as e:
-        print(f"❌ Error reading CSV: {e}")
+        print("Error reading CSV:", e)
         return programmes
 
 # Load programmes once when the server starts
@@ -58,8 +58,8 @@ def check_eligibility(request):
         data = request.data
         user_cluster_points = float(data.get('cluster_points', 0))
         
-        print(f"🔍 Checking eligibility with {len(ALL_PROGRAMMES)} programmes")
-        print(f"📊 User cluster points: {user_cluster_points}")
+        print("Checking eligibility with", len(ALL_PROGRAMMES), "programmes")
+        print("User cluster points:", user_cluster_points)
         
         # Filter programmes by cluster points
         eligible_programmes = []
@@ -73,21 +73,21 @@ def check_eligibility(request):
                     'required_cluster': programme['cluster_points']
                 })
         
-        print(f"🎯 Found {len(eligible_programmes)} eligible programmes")
+        print("Found", len(eligible_programmes), "eligible programmes")
         
         return Response({
             'eligible_programmes': eligible_programmes,
             'total_found': len(eligible_programmes),
             'database_total': len(ALL_PROGRAMMES),
-            'message': f'Found {len(eligible_programmes)} courses matching your {user_cluster_points} cluster points'
+            'message': 'Found ' + str(len(eligible_programmes)) + ' courses matching your ' + str(user_cluster_points) + ' cluster points'
         })
         
     except Exception as e:
-        print(f"❌ Error in eligibility check: {e}")
+        print("Error in eligibility check:", e)
         return Response({
             'eligible_programmes': [],
             'total_found': 0,
-            'message': f'Error: {str(e)}'
+            'message': 'Error: ' + str(e)
         }, status=500)
 
 @api_view(['GET'])
@@ -95,7 +95,7 @@ def check_database(request):
     return Response({
         'total_programmes': len(ALL_PROGRAMMES),
         'status': 'working',
-        'message': f'Using CSV data with {len(ALL_PROGRAMMES)} programmes'
+        'message': 'Using CSV data with ' + str(len(ALL_PROGRAMMES)) + ' programmes'
     })
 
 @api_view(['POST'])
