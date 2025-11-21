@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
+from .models import Programme
 
 @api_view(['POST'])
 def check_eligibility(request):
@@ -8,34 +9,37 @@ def check_eligibility(request):
         data = request.data
         user_cluster_points = float(data.get('cluster_points', 0))
         
-        # Import models
-        from .models import Programme
+        # Get ALL programmes from database
+        all_programmes = Programme.objects.all()
+        print(f"📊 Checking {all_programmes.count()} programmes from database")
         
-        # Get all programmes that match the cluster points
-        matching_programmes = Programme.objects.filter(cluster_points__lte=user_cluster_points)
-        
-        # Convert to response format
+        # Filter programmes by cluster points
         eligible_programmes = []
-        for programme in matching_programmes:
-            eligible_programmes.append({
-                'programme_code': programme.programme_code,
-                'programme_name': programme.programme_name,
-                'university': programme.university,
-                'cluster_points': programme.cluster_points,
-                'required_cluster': programme.cluster_points
-            })
+        for programme in all_programmes:
+            if user_cluster_points >= programme.cluster_points:
+                eligible_programmes.append({
+                    'programme_code': programme.programme_code,
+                    'programme_name': programme.programme_name,
+                    'university': programme.university,
+                    'cluster_points': programme.cluster_points,
+                    'required_cluster': programme.cluster_points
+                })
+        
+        print(f"🎯 Found {len(eligible_programmes)} eligible programmes")
         
         return Response({
             'eligible_programmes': eligible_programmes,
             'total_found': len(eligible_programmes),
-            'message': f'Found {len(eligible_programmes)} courses matching your cluster points'
+            'database_total': all_programmes.count(),
+            'message': f'Found {len(eligible_programmes)} out of {all_programmes.count()} total courses'
         })
         
     except Exception as e:
+        print(f"❌ Error in eligibility check: {e}")
         return Response({
             'eligible_programmes': [],
             'total_found': 0,
-            'message': f'Error: {str(e)}'
+            'message': f'Database error: {str(e)}'
         }, status=500)
 
 @api_view(['POST'])
@@ -60,21 +64,30 @@ def pay(request):
 
 @api_view(['GET'])
 def check_database(request):
-    """Check how many programmes are in the database"""
-    from .models import Programme
-    count = Programme.objects.count()
-    
-    sample_programmes = []
-    for programme in Programme.objects.all()[:5]:
-        sample_programmes.append({
-            'code': programme.programme_code,
-            'name': programme.programme_name,
-            'university': programme.university,
-            'points': programme.cluster_points
+    """Check database status and contents"""
+    try:
+        total_programmes = Programme.objects.count()
+        
+        sample_programmes = []
+        for programme in Programme.objects.all()[:10]:  # First 10 programmes
+            sample_programmes.append({
+                'programme_code': programme.programme_code,
+                'programme_name': programme.programme_name,
+                'university': programme.university,
+                'cluster_points': programme.cluster_points
+            })
+        
+        return Response({
+            'total_programmes': total_programmes,
+            'sample_programmes': sample_programmes,
+            'status': 'working' if total_programmes > 0 else 'empty',
+            'message': f'Database has {total_programmes} programmes'
         })
-    
-    return Response({
-        'total_programmes': count,
-        'sample_programmes': sample_programmes,
-        'status': 'working' if count > 0 else 'empty'
-    })
+        
+    except Exception as e:
+        return Response({
+            'total_programmes': 0,
+            'sample_programmes': [],
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
