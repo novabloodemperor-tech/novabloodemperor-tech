@@ -1,3 +1,28 @@
+import os
+import django
+from django.db import connection
+
+# Auto-import data if database is empty
+try:
+    from .models import Programme
+    if Programme.objects.count() == 0:
+        print("⚠️ Database is empty - checking for data file...")
+        if os.path.exists('programmes_export.json'):
+            import json
+            print("📥 Importing programmes from JSON...")
+            with open('programmes_export.json', 'r', encoding='utf-8') as f:
+                programmes_data = json.load(f)
+            
+            for prog_data in programmes_data[:50]:  # Import first 50 for testing
+                Programme.objects.create(
+                    programme_code=prog_data['programme_code'],
+                    programme_name=prog_data['programme_name'],
+                    university=prog_data['university'],
+                    cluster_points=prog_data['cluster_points']
+                )
+            print(f"✅ Auto-imported {Programme.objects.count()} programmes")
+except:
+    pass
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
