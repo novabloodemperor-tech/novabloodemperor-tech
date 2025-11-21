@@ -117,3 +117,58 @@ def pay(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+@api_view(['POST'])
+def download_courses_pdf(request):
+    try:
+        data = request.data
+        eligible_programmes = data.get('eligible_programmes', [])
+        user_cluster_points = data.get('cluster_points', 0)
+        
+        if not eligible_programmes:
+            return Response({
+                "error": "No courses to download",
+                "message": "Please find eligible courses first before downloading PDF"
+            }, status=400)
+        
+        # Create PDF content
+        pdf_content = f"""
+        COURSE PILOT - ELIGIBLE COURSES REPORT
+        ======================================
+        
+        Student Cluster Points: {user_cluster_points}
+        Total Eligible Courses: {len(eligible_programmes)}
+        Generated on: Current date
+        
+        ELIGIBLE COURSES:
+        =================
+        """
+        
+        for i, programme in enumerate(eligible_programmes, 1):
+            pdf_content += f"""
+        {i}. {programme.get('programme_name', 'N/A')}
+           University: {programme.get('university', 'N/A')}
+           Programme Code: {programme.get('programme_code', 'N/A')}
+           Required Points: {programme.get('cluster_points', 'N/A')}
+           ---
+            """
+        
+        pdf_content += """
+        ======================================
+        Note: This is a preliminary report. Always verify with official KUCCPS portal.
+        CoursePilot Kenya - Making Education Accessible
+        """
+        
+        return Response({
+            "success": True,
+            "message": "PDF generated successfully",
+            "pdf_content": pdf_content,
+            "total_courses": len(eligible_programmes),
+            "file_name": f"eligible_courses_{user_cluster_points}_points.pdf",
+            "note": "This is a text preview. Full PDF download will be implemented in the next update."
+        })
+        
+    except Exception as e:
+        return Response({
+            "error": "PDF generation failed",
+            "message": str(e)
+        }, status=500)
