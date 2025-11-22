@@ -134,6 +134,8 @@ def download_courses_pdf(request):
         eligible_programmes = data.get('eligible_programmes', [])
         user_cluster_points = data.get('cluster_points', 0)
         
+        print(f"📊 PDF Generation: Received {len(eligible_programmes)} courses")
+        
         if not eligible_programmes:
             return Response({
                 "error": "No courses to download",
@@ -158,9 +160,9 @@ def download_courses_pdf(request):
         
         # Title Page
         p.setFont("Helvetica-Bold", 18)
-        p.drawString(100, 750, "COURSE PILOT KENYA")
+        p.drawCentredString(300, 750, "COURSE PILOT KENYA")
         p.setFont("Helvetica-Bold", 16)
-        p.drawString(100, 720, "Eligible Courses Report")
+        p.drawCentredString(300, 720, "Eligible Courses Report")
         
         p.setFont("Helvetica", 12)
         p.drawString(100, 680, f"Student Cluster Points: {user_cluster_points}")
@@ -168,34 +170,34 @@ def download_courses_pdf(request):
         p.drawString(100, 640, f"Total Universities: {len(sorted_universities)}")
         p.drawString(100, 620, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         
-        # Add a summary table
+        # University summary
         p.setFont("Helvetica-Bold", 12)
-        p.drawString(100, 580, "Summary by University:")
+        p.drawString(100, 580, "Universities with Eligible Courses:")
         p.setFont("Helvetica", 10)
         
         y_position = 560
-        for i, university in enumerate(sorted_universities[:15]):  # Show first 15 on title page
+        for university in sorted_universities:
             course_count = len(courses_by_university[university])
-            p.drawString(120, y_position, f"• {university[:50]}: {course_count} courses")
+            p.drawString(120, y_position, f"• {university}: {course_count} courses")
             y_position -= 15
-            if y_position < 100 and i < len(sorted_universities) - 1:
-                p.drawString(120, y_position, f"... and {len(sorted_universities) - 15} more universities")
-                break
+            if y_position < 100:
+                # If running out of space, continue on next page
+                p.showPage()
+                p.setFont("Helvetica", 10)
+                y_position = 750
+                p.drawString(100, y_position, "Universities (continued):")
+                y_position -= 30
         
         p.setFont("Helvetica-Oblique", 8)
-        p.drawString(100, 50, "Note: Complete course list follows on next pages")
+        p.drawString(100, 50, "Complete course list follows on next pages")
         p.drawString(100, 35, "CoursePilot Kenya - Making Education Accessible")
-        
-        # Start new page for detailed courses
-        p.showPage()
         
         # Detailed courses by university
         for university_index, university in enumerate(sorted_universities):
             university_courses = courses_by_university[university]
             
-            # Start new page for each university if needed
-            if university_index > 0:
-                p.showPage()
+            # Start new page for each university
+            p.showPage()
             
             # University header
             p.setFont("Helvetica-Bold", 14)
@@ -203,14 +205,19 @@ def download_courses_pdf(request):
             p.setFont("Helvetica", 10)
             p.drawString(100, 730, f"Number of eligible courses: {len(university_courses)}")
             
-            # Course list
+            # Course list header
             y_position = 700
             p.setFont("Helvetica-Bold", 10)
-            p.drawString(100, y_position, "PROGRAMME NAME")
-            p.drawString(350, y_position, "CODE")
-            p.drawString(420, y_position, "POINTS")
+            p.drawString(100, y_position, "No.")
+            p.drawString(120, y_position, "PROGRAMME NAME")
+            p.drawString(400, y_position, "CODE")
+            p.drawString(470, y_position, "POINTS")
+            
+            # Draw line under header
+            p.line(100, 695, 550, 695)
             y_position -= 20
             
+            # Course list
             p.setFont("Helvetica", 8)
             for i, programme in enumerate(university_courses):
                 if y_position < 50:  # Start new page if running out of space
@@ -218,47 +225,62 @@ def download_courses_pdf(request):
                     p.setFont("Helvetica-Bold", 10)
                     p.drawString(100, 750, f"University: {university} (continued)")
                     p.setFont("Helvetica-Bold", 10)
-                    p.drawString(100, 730, "PROGRAMME NAME")
-                    p.drawString(350, 730, "CODE")
-                    p.drawString(420, 730, "POINTS")
+                    p.drawString(100, 730, "No.")
+                    p.drawString(120, 730, "PROGRAMME NAME")
+                    p.drawString(400, 730, "CODE")
+                    p.drawString(470, 730, "POINTS")
+                    p.line(100, 725, 550, 725)
                     y_position = 710
                     p.setFont("Helvetica", 8)
                 
-                programme_name = programme.get('programme_name', 'N/A')[:60]
-                programme_code = programme.get('programme_code', 'N/A')[:15]
+                programme_name = programme.get('programme_name', 'N/A')
+                programme_code = programme.get('programme_code', 'N/A')
                 points = programme.get('cluster_points', 'N/A')
                 
+                # Truncate long programme names
+                display_name = programme_name[:55] + "..." if len(programme_name) > 55 else programme_name
+                
                 # Draw programme details
-                p.drawString(100, y_position, f"{i+1}. {programme_name}")
-                p.drawString(350, y_position, programme_code)
-                p.drawString(420, y_position, str(points))
+                p.drawString(100, y_position, f"{i+1}.")
+                p.drawString(120, y_position, display_name)
+                p.drawString(400, y_position, programme_code)
+                p.drawString(470, y_position, str(points))
                 
                 y_position -= 12
-                
-                # Add small gap every 10 courses for readability
-                if (i + 1) % 10 == 0:
-                    y_position -= 5
         
-        # Final page with footer
+        # Final summary page
         p.showPage()
+        p.setFont("Helvetica-Bold", 16)
+        p.drawCentredString(300, 750, "REPORT SUMMARY")
+        p.setFont("Helvetica", 12)
+        p.drawString(100, 700, f"Total Universities: {len(sorted_universities)}")
+        p.drawString(100, 675, f"Total Eligible Courses: {len(eligible_programmes)}")
+        p.drawString(100, 650, f"Your Cluster Points: {user_cluster_points}")
+        p.drawString(100, 625, f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
         p.setFont("Helvetica-Bold", 12)
-        p.drawString(100, 750, "REPORT SUMMARY")
+        p.drawString(100, 550, "Top Universities by Course Count:")
         p.setFont("Helvetica", 10)
-        p.drawString(100, 720, f"Total Universities: {len(sorted_universities)}")
-        p.drawString(100, 700, f"Total Eligible Courses: {len(eligible_programmes)}")
-        p.drawString(100, 680, f"Your Cluster Points: {user_cluster_points}")
-        p.drawString(100, 660, f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        # Show top 10 universities by course count
+        university_counts = [(uni, len(courses_by_university[uni])) for uni in sorted_universities]
+        university_counts.sort(key=lambda x: x[1], reverse=True)
+        
+        y_pos = 520
+        for i, (uni, count) in enumerate(university_counts[:10]):
+            p.drawString(120, y_pos, f"{i+1}. {uni[:40]}: {count} courses")
+            y_pos -= 20
         
         p.setFont("Helvetica-Oblique", 8)
         p.drawString(100, 50, "Important: This is a preliminary report. Always verify with official KUCCPS portal.")
         p.drawString(100, 35, "CoursePilot Kenya - Making Education Accessible")
-        p.drawString(100, 20, "Contact: support@coursepilot.co.ke")
         
-        p.showPage()
         p.save()
         
         pdf = buffer.getvalue()
         buffer.close()
+        
+        print(f"✅ PDF Generated: {len(pdf)} bytes, {len(eligible_programmes)} courses")
         
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="all_courses_{user_cluster_points}_points.pdf"'
@@ -267,6 +289,7 @@ def download_courses_pdf(request):
         return response
         
     except Exception as e:
+        print(f"❌ PDF Generation Error: {e}")
         return Response({
             "error": "PDF generation failed",
             "message": str(e)
