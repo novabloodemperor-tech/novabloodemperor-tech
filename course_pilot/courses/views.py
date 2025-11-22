@@ -6,6 +6,8 @@ import os
 import io
 from datetime import datetime
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter  # <-- ADD THIS IMPORT
+from reportlab.lib.units import inch 
 
 # Load all programmes from CSV file
 def load_all_programmes():
