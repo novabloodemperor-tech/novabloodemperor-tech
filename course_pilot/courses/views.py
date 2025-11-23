@@ -129,6 +129,127 @@ def check_requirements_data():
 
 # Call this function to see what data we have
 check_requirements_data()
+def get_programme_cluster(programme_name):
+    """
+    Guess the cluster based on programme name patterns
+    This is temporary until we get proper cluster mapping
+    """
+    programme_name_upper = programme_name.upper()
+    
+    # Law programmes
+    if any(word in programme_name_upper for word in ['LAW', 'LL.B']):
+        return '1'  # Cluster 1 for Law
+    
+    # Medical programmes
+    elif any(word in programme_name_upper for word in ['MEDICINE', 'MEDICAL', 'PHARMACY', 'DENTAL', 'SURGERY', 'VETERINARY']):
+        return '2'  # Likely Cluster 2 for Medicine
+    
+    # Engineering programmes
+    elif any(word in programme_name_upper for word in ['ENGINEERING', 'ELECTRICAL', 'MECHANICAL', 'CIVIL', 'AERONAUTICAL']):
+        return '3'  # Likely Cluster 3 for Engineering
+    
+    # Computer Science programmes
+    elif any(word in programme_name_upper for word in ['COMPUTER', 'SOFTWARE', 'INFORMATION TECHNOLOGY', 'IT']):
+        return '4'  # Likely Cluster 4 for Computer Science
+    
+    # Business programmes
+    elif any(word in programme_name_upper for word in ['COMMERCE', 'BUSINESS', 'ACCOUNTING', 'ECONOMICS']):
+        return '5'  # Likely Cluster 5 for Business
+    
+    # Default cluster for general programmes
+    return '6'
+
+def check_subject_requirements(programme_data, user_grades):
+    """
+    Improved subject requirement checking using cluster-based system
+    """
+    programme_name = programme_data['programme_name']
+    cluster = get_programme_cluster(programme_name)
+    
+    print(f"🔍 Checking {programme_name} - Cluster: {cluster}")
+    
+    # Define basic cluster requirements (we'll improve this with actual data)
+    cluster_requirements = {
+        '1': [('English', 'B'), ('Kiswahili', 'B')],  # Law cluster
+        '2': [('Biology', 'C+'), ('Chemistry', 'C+'), ('Mathematics', 'C+'), ('Physics', 'C+')],  # Medical cluster
+        '3': [('Mathematics', 'C+'), ('Physics', 'C+'), ('Chemistry', 'C')],  # Engineering cluster
+        '4': [('Mathematics', 'C+')],  # Computer Science cluster
+        '5': [('Mathematics', 'C+')],  # Business cluster
+        '6': []  # General cluster - no specific requirements
+    }
+    
+    requirements = cluster_requirements.get(cluster, [])
+    
+    # Grade values for comparison
+    grade_values = {
+        'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8,
+        'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'E': 1
+    }
+    
+    # Check each requirement
+    for subject, required_grade in requirements:
+        user_grade = user_grades.get(subject)
+        
+        # If user doesn't have this subject at all, they don't qualify
+        if not user_grade:
+            print(f"❌ {programme_name}: Missing required subject - {subject}")
+            return False
+        
+        # Check if user's grade meets the requirement
+        user_value = grade_values.get(user_grade, 0)
+        required_value = grade_values.get(required_grade, 0)
+        
+        if user_value < required_value:
+            print(f"❌ {programme_name}: {subject} grade too low - User: {user_grade}, Required: {required_grade}")
+            return False
+    
+    return True
+def analyze_cluster_requirements():
+    """
+    Analyze the cluster-based requirements structure
+    """
+    print("🔍 Analyzing cluster requirements structure...")
+    
+    req_file = "data/cleaned/KUCCPS_Requirements_Cleaned.csv"
+    
+    if os.path.exists(req_file):
+        try:
+            with open(req_file, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                clusters = {}
+                current_cluster = None
+                
+                for row_num, row in enumerate(reader):
+                    # Look for cluster headers (numbers in first column)
+                    if row[0] and row[0].isdigit():
+                        current_cluster = row[0]
+                        clusters[current_cluster] = {
+                            'subcluster': row[1] if len(row) > 1 else '',
+                            'subjects': []
+                        }
+                        print(f"📋 Cluster {current_cluster}: {row[1]}")
+                    
+                    # Look for subject requirements (rows with actual requirements)
+                    elif current_cluster and any('SUBJECT' in cell.upper() or 'ENG/' in cell or 'MAT ' in cell for cell in row if cell):
+                        subjects_row = [cell for cell in row if cell.strip()]
+                        if subjects_row:
+                            clusters[current_cluster]['subjects'] = subjects_row
+                            print(f"   Subjects: {subjects_row}")
+                    
+                    # Look for specific programme examples in requirements
+                    elif current_cluster and any('LAWS' in cell.upper() or 'MEDICINE' in cell.upper() or 'ENGINEERING' in cell.upper() for cell in row if cell):
+                        print(f"   Programme example: {[cell for cell in row if cell]}")
+                
+                print(f"📊 Found {len(clusters)} clusters")
+                return clusters
+                
+        except Exception as e:
+            print(f"❌ Error analyzing clusters: {e}")
+    
+    return {}
+
+# Call this to see cluster structure
+clusters_data = analyze_cluster_requirements()
 def check_subject_requirements(programme_data, user_grades):
     """
     Basic subject requirement checking
