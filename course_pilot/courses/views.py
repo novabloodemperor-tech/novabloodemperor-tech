@@ -297,3 +297,40 @@ def download_courses_pdf(request):
             "error": "PDF generation failed",
             "message": str(e)
         }, status=500)
+
+
+# Add this function to your existing views.py file
+def sync_csv_to_database():
+    """
+    One-time function to sync CSV data to database
+    This won't affect your current functionality
+    """
+    try:
+        from .models import Programme
+        
+        # Clear existing database programmes
+        Programme.objects.all().delete()
+        print("🧹 Cleared existing database programmes")
+        
+        # Add programmes from CSV to database
+        programme_count = 0
+        for programme_data in ALL_PROGRAMMES:
+            programme, created = Programme.objects.get_or_create(
+                programme_code=programme_data['programme_code'],
+                defaults={
+                    'programme_name': programme_data['programme_name'],
+                    'university': programme_data['university'],
+                    'cluster_points': programme_data['cluster_points']
+                }
+            )
+            if created:
+                programme_count += 1
+        
+        print(f"✅ Added {programme_count} programmes to database")
+        print(f"📊 Database now has {Programme.objects.count()} programmes")
+        
+    except Exception as e:
+        print(f"⚠️ Database sync note: {e}")
+
+# Call this function once (it will run when the server starts)
+sync_csv_to_database()
