@@ -73,61 +73,90 @@ def load_all_programmes():
 
 ALL_PROGRAMMES = load_all_programmes()
 
+def check_subject_requirements(programme_data, user_grades):
+    """
+    Basic subject requirement checking
+    For now, we'll check common required subjects
+    """
+    programme_name = programme_data['programme_name'].upper()
+    
+    # Common subject requirements based on programme names
+    if any(word in programme_name for word in ['ENGINEERING', 'PHYSICS', 'ELECTRICAL', 'MECHANICAL', 'CIVIL']):
+        # Engineering programmes usually require Physics and Mathematics
+        if not user_grades.get('Physics') or not user_grades.get('Mathematics'):
+            return False
+    
+    elif any(word in programme_name for word in ['MEDICINE', 'PHARMACY', 'DENTAL', 'SURGERY', 'VETERINARY']):
+        # Medical programmes usually require Biology and Chemistry
+        if not user_grades.get('Biology') or not user_grades.get('Chemistry'):
+            return False
+    
+    elif any(word in programme_name for word in ['COMPUTER', 'SOFTWARE', 'IT', 'INFORMATION']):
+        # Computer programmes usually require Mathematics
+        if not user_grades.get('Mathematics'):
+            return False
+    
+    elif any(word in programme_name for word in ['COMMERCE', 'BUSINESS', 'ACCOUNTING', 'ECONOMICS']):
+        # Business programmes usually require Mathematics
+        if not user_grades.get('Mathematics'):
+            return False
+    
+    # If no specific requirements detected, return True
+    return True
+
 @api_view(['POST'])
 def check_eligibility(request):
     try:
         data = request.data
+        user_grades = data.get('grades', {})
         user_cluster_points = float(data.get('cluster_points', 0))
         
+        print(f"🔍 Checking eligibility with {len(ALL_PROGRAMMES)} programmes")
+        print(f"📊 User cluster points: {user_cluster_points}")
+        print(f"📚 User subjects: {list(user_grades.keys())}")
+
         eligible_programmes = []
+        programmes_bypassed = 0
+        
         for programme in ALL_PROGRAMMES:
+            # Check cluster points first
             if user_cluster_points >= programme['cluster_points']:
-                eligible_programmes.append({
-                    'programme_code': programme['programme_code'],
-                    'programme_name': programme['programme_name'],
-                    'university': programme['university'],
-                    'cluster_points': programme['cluster_points'],
-                    'required_cluster': programme['cluster_points']
-                })
+                # Check subject requirements
+                meets_subjects = check_subject_requirements(programme, user_grades)
+                
+                if meets_subjects:
+                    eligible_programmes.append({
+                        'programme_code': programme['programme_code'],
+                        'programme_name': programme['programme_name'],
+                        'university': programme['university'],
+                        'cluster_points': programme['cluster_points'],
+                        'required_cluster': programme['cluster_points'],
+                        'meets_subjects': True
+                    })
+                else:
+                    programmes_bypassed += 1
+                    # For debugging, let's see which programmes are being filtered out
+                    print(f"⚠️ Filtered out: {programme['programme_name']} - Subject requirements not met")
+        
+        print(f"🎯 Found {len(eligible_programmes)} eligible programmes")
+        print(f"🚫 Filtered out {programmes_bypassed} programmes due to subject requirements")
         
         return Response({
             'eligible_programmes': eligible_programmes,
             'total_found': len(eligible_programmes),
             'database_total': len(ALL_PROGRAMMES),
-            'message': 'Found ' + str(len(eligible_programmes)) + ' courses'
+            'programmes_filtered': programmes_bypassed,
+            'message': f'Found {len(eligible_programmes)} courses matching your criteria',
+            'note': '✅ Now checking both cluster points AND subject requirements'
         })
         
     except Exception as e:
+        print(f"❌ Error in eligibility check: {e}")
         return Response({
             'eligible_programmes': [],
             'total_found': 0,
-            'message': 'Error: ' + str(e)
+            'message': f'Error: {str(e)}'
         }, status=500)
-
-@api_view(['GET'])
-def check_database(request):
-    return Response({
-        'total_programmes': len(ALL_PROGRAMMES),
-        'status': 'working',
-        'message': 'Using CSV data with ' + str(len(ALL_PROGRAMMES)) + ' programmes'
-    })
-
-@api_view(['POST'])
-def pay(request):
-    try:
-        phone = request.data.get("phone")
-        amount = request.data.get("amount")
-        if not phone or not amount:
-            return Response({"error": "Phone and amount are required"}, status=400)
-        return Response({
-            "success": True,
-            "message": "Payment initiated successfully!",
-            "phone": phone,
-            "amount": amount,
-            "transaction_id": "TEST_12345"
-        })
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
 
 @api_view(['POST'])
 def download_courses_pdf(request):
