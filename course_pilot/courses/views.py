@@ -6,8 +6,8 @@ import os
 import io
 from datetime import datetime
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter  # <-- ADD THIS IMPORT
-from reportlab.lib.units import inch 
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
 
 # Load all programmes from CSV file
 def load_all_programmes():
@@ -160,11 +160,11 @@ def download_courses_pdf(request):
         
         p.setTitle(f"Eligible Courses - {user_cluster_points} points")
         
-        # Title Page
+        # Title Page - FIXED: Use drawString instead of drawCentredString
         p.setFont("Helvetica-Bold", 18)
-        p.drawCentredString(300, 750, "COURSE PILOT KENYA")
+        p.drawString(100, 750, "COURSE PILOT KENYA")  # Changed from drawCentredString
         p.setFont("Helvetica-Bold", 16)
-        p.drawCentredString(300, 720, "Eligible Courses Report")
+        p.drawString(100, 720, "Eligible Courses Report")  # Changed from drawCentredString
         
         p.setFont("Helvetica", 12)
         p.drawString(100, 680, f"Student Cluster Points: {user_cluster_points}")
@@ -172,23 +172,24 @@ def download_courses_pdf(request):
         p.drawString(100, 640, f"Total Universities: {len(sorted_universities)}")
         p.drawString(100, 620, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         
-        # University summary
+        # University summary - FIXED: Better page management
         p.setFont("Helvetica-Bold", 12)
         p.drawString(100, 580, "Universities with Eligible Courses:")
         p.setFont("Helvetica", 10)
         
         y_position = 560
-        for university in sorted_universities:
+        for i, university in enumerate(sorted_universities):
             course_count = len(courses_by_university[university])
             p.drawString(120, y_position, f"• {university}: {course_count} courses")
             y_position -= 15
-            if y_position < 100:
-                # If running out of space, continue on next page
+            
+            # FIXED: Better page break handling
+            if y_position < 100 and i < len(sorted_universities) - 1:
                 p.showPage()
+                p.setFont("Helvetica-Bold", 12)
+                p.drawString(100, 750, "Universities (continued):")
                 p.setFont("Helvetica", 10)
-                y_position = 750
-                p.drawString(100, y_position, "Universities (continued):")
-                y_position -= 30
+                y_position = 730
         
         p.setFont("Helvetica-Oblique", 8)
         p.drawString(100, 50, "Complete course list follows on next pages")
@@ -250,10 +251,10 @@ def download_courses_pdf(request):
                 
                 y_position -= 12
         
-        # Final summary page
+        # Final summary page - FIXED: Use drawString instead of drawCentredString
         p.showPage()
         p.setFont("Helvetica-Bold", 16)
-        p.drawCentredString(300, 750, "REPORT SUMMARY")
+        p.drawString(100, 750, "REPORT SUMMARY")  # Changed from drawCentredString
         p.setFont("Helvetica", 12)
         p.drawString(100, 700, f"Total Universities: {len(sorted_universities)}")
         p.drawString(100, 675, f"Total Eligible Courses: {len(eligible_programmes)}")
