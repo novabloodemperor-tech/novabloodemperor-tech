@@ -524,3 +524,60 @@ if ALL_PROGRAMMES:
     sync_csv_to_database()
 else:
     print("❌ Skipping database sync: No programme data available")
+def analyze_csv_subject_data():
+    """
+    Analyze what subject requirement data we actually have in the CSV files
+    """
+    print("🔍 Analyzing subject data in CSV files...")
+    
+    # Check main CSV for any subject columns
+    main_csv = "data/cleaned/KUCCPS_ClusterPoints_Cleaned.csv"
+    if os.path.exists(main_csv):
+        try:
+            with open(main_csv, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                headers = next(reader)
+                print(f"📊 Main CSV columns: {headers}")
+                
+                # Check if there are subject columns (beyond column 5)
+                if len(headers) > 5:
+                    print(f"📚 Potential subject columns: {headers[5:]}")
+                    
+                    # Check first few rows for subject data
+                    for i, row in enumerate(reader):
+                        if i < 3:  # First 3 data rows
+                            if len(row) > 5:
+                                print(f"Row {i+1} subject data: {row[5:]}")
+                        else:
+                            break
+                else:
+                    print("❌ No extra columns for subject data in main CSV")
+        except Exception as e:
+            print(f"Error reading main CSV: {e}")
+    
+    # Check requirements CSV structure
+    req_csv = "data/cleaned/KUCCPS_Requirements_Cleaned.csv"
+    if os.path.exists(req_csv):
+        try:
+            with open(req_csv, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                headers = next(reader)
+                print(f"📊 Requirements CSV columns: {headers}")
+                
+                # Look for rows with actual subject requirements
+                subject_rows = []
+                for i, row in enumerate(reader):
+                    if any('ENG' in cell or 'MAT' in cell or 'BIO' in cell or 'CHE' in cell or 'PHY' in cell for cell in row if cell):
+                        subject_rows.append((i, [cell for cell in row if cell]))
+                    if len(subject_rows) > 5:
+                        break
+                
+                print("📚 Sample subject requirement rows:")
+                for row_num, row_data in subject_rows:
+                    print(f"  Row {row_num}: {row_data}")
+                    
+        except Exception as e:
+            print(f"Error reading requirements CSV: {e}")
+
+# Call this function
+analyze_csv_subject_data()
