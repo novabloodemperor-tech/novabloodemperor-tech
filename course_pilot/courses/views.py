@@ -72,7 +72,63 @@ def load_all_programmes():
         ]
 
 ALL_PROGRAMMES = load_all_programmes()
+def check_requirements_data():
+    """
+    Check what subject requirements data we actually have
+    """
+    print("🔍 Checking actual subject requirements data...")
+    
+    # Check if we have a requirements CSV file
+    requirements_files = [
+        "data/cleaned/KUCCPS_Requirements_Cleaned.csv",
+        "/opt/render/project/src/data/cleaned/KUCCPS_Requirements_Cleaned.csv",
+        "KUCCPS_Requirements_Cleaned.csv"
+    ]
+    
+    req_file = None
+    for file_path in requirements_files:
+        if os.path.exists(file_path):
+            req_file = file_path
+            break
+    
+    if req_file:
+        try:
+            with open(req_file, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                headers = next(reader)
+                print(f"✅ Requirements file found: {req_file}")
+                print(f"📊 Columns: {headers}")
+                
+                # Show first few rows
+                print("Sample rows from requirements file:")
+                for i, row in enumerate(reader):
+                    if i < 5:  # Show first 5 rows
+                        print(f"Row {i+1}: {row}")
+                    else:
+                        break
+        except Exception as e:
+            print(f"❌ Error reading requirements file: {e}")
+    else:
+        print("❌ No requirements CSV file found")
+    
+    # Also check if subject requirements are in the main CSV
+    print(f"\n🔍 Checking main CSV for subject requirements...")
+    if ALL_PROGRAMMES:
+        sample_programme = ALL_PROGRAMMES[0]
+        print(f"Sample programme structure: {list(sample_programme.keys())}")
+        
+        # Look for programmes with "MEDICAL LABORATORY" in name
+        medical_programmes = [p for p in ALL_PROGRAMMES if 'MEDICAL LABORATORY' in p['programme_name'].upper()]
+        if medical_programmes:
+            print(f"🏥 Medical Laboratory programme sample: {medical_programmes[0]}")
+        
+        # Look for Computer Science programmes
+        comp_programmes = [p for p in ALL_PROGRAMMES if 'COMPUTER' in p['programme_name'].upper()]
+        if comp_programmes:
+            print(f"💻 Computer Science programme sample: {comp_programmes[0]}")
 
+# Call this function to see what data we have
+check_requirements_data()
 def check_subject_requirements(programme_data, user_grades):
     """
     Basic subject requirement checking
