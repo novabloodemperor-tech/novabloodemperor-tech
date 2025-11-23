@@ -158,6 +158,31 @@ def check_eligibility(request):
             'message': f'Error: {str(e)}'
         }, status=500)
 
+@api_view(['GET'])
+def check_database(request):
+    return Response({
+        'total_programmes': len(ALL_PROGRAMMES),
+        'status': 'working',
+        'message': 'Using CSV data with ' + str(len(ALL_PROGRAMMES)) + ' programmes'
+    })
+
+@api_view(['POST'])
+def pay(request):
+    try:
+        phone = request.data.get("phone")
+        amount = request.data.get("amount")
+        if not phone or not amount:
+            return Response({"error": "Phone and amount are required"}, status=400)
+        return Response({
+            "success": True,
+            "message": "Payment initiated successfully!",
+            "phone": phone,
+            "amount": amount,
+            "transaction_id": "TEST_12345"
+        })
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
 @api_view(['POST'])
 def download_courses_pdf(request):
     try:
@@ -189,11 +214,11 @@ def download_courses_pdf(request):
         
         p.setTitle(f"Eligible Courses - {user_cluster_points} points")
         
-        # Title Page - FIXED: Use drawString instead of drawCentredString
+        # Title Page
         p.setFont("Helvetica-Bold", 18)
-        p.drawString(100, 750, "COURSE PILOT KENYA")  # Changed from drawCentredString
+        p.drawString(100, 750, "COURSE PILOT KENYA")
         p.setFont("Helvetica-Bold", 16)
-        p.drawString(100, 720, "Eligible Courses Report")  # Changed from drawCentredString
+        p.drawString(100, 720, "Eligible Courses Report")
         
         p.setFont("Helvetica", 12)
         p.drawString(100, 680, f"Student Cluster Points: {user_cluster_points}")
@@ -201,7 +226,7 @@ def download_courses_pdf(request):
         p.drawString(100, 640, f"Total Universities: {len(sorted_universities)}")
         p.drawString(100, 620, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         
-        # University summary - FIXED: Better page management
+        # University summary
         p.setFont("Helvetica-Bold", 12)
         p.drawString(100, 580, "Universities with Eligible Courses:")
         p.setFont("Helvetica", 10)
@@ -212,7 +237,7 @@ def download_courses_pdf(request):
             p.drawString(120, y_position, f"• {university}: {course_count} courses")
             y_position -= 15
             
-            # FIXED: Better page break handling
+            # Better page break handling
             if y_position < 100 and i < len(sorted_universities) - 1:
                 p.showPage()
                 p.setFont("Helvetica-Bold", 12)
@@ -280,10 +305,10 @@ def download_courses_pdf(request):
                 
                 y_position -= 12
         
-        # Final summary page - FIXED: Use drawString instead of drawCentredString
+        # Final summary page
         p.showPage()
         p.setFont("Helvetica-Bold", 16)
-        p.drawString(100, 750, "REPORT SUMMARY")  # Changed from drawCentredString
+        p.drawString(100, 750, "REPORT SUMMARY")
         p.setFont("Helvetica", 12)
         p.drawString(100, 700, f"Total Universities: {len(sorted_universities)}")
         p.drawString(100, 675, f"Total Eligible Courses: {len(eligible_programmes)}")
@@ -326,7 +351,6 @@ def download_courses_pdf(request):
             "error": "PDF generation failed",
             "message": str(e)
         }, status=500)
-
 
 # Add this function to your existing views.py file
 def sync_csv_to_database():
