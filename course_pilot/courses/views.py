@@ -233,96 +233,35 @@ def check_subject_requirements(programme_data, user_grades):
 @api_view(['POST'])
 def check_eligibility(request):
     try:
-        # Check if programmes are loaded
-        if not ALL_PROGRAMMES:
-            return Response({
-                'eligible_programmes': [],
-                'total_found': 0,
-                'message': '❌ System Error: Programme data not loaded. Please contact support.',
-                'error': 'Programme data unavailable'
-            }, status=500)
-        
         data = request.data
-        user_grades = data.get('grades', {})
+
         user_cluster_points = float(data.get('cluster_points', 0))
-        
-        print(f"🔍 Checking eligibility with {len(ALL_PROGRAMMES)} programmes")
-        print(f"📊 User cluster points: {user_cluster_points}")
-        print(f"📚 User subjects: {list(user_grades.keys())}")
+        user_grades = data.get('grades', {})
 
         eligible_programmes = []
-        programmes_bypassed = 0
-        
+
         for programme in ALL_PROGRAMMES:
-            # Check cluster points first
             if user_cluster_points >= programme['cluster_points']:
-                # Check subject requirements using ACTUAL KUCCPS data
-                meets_subjects = check_subject_requirements(programme, user_grades)
-                
-                if meets_subjects:
-                    eligible_programmes.append({
-                        'programme_code': programme['programme_code'],
-                        'programme_name': programme['programme_name'],
-                        'university': programme['university'],
-                        'cluster_points': programme['cluster_points'],
-                        'required_cluster': programme['cluster_points'],
-                        'meets_subjects': True
-                    })
-                else:
-                    programmes_bypassed += 1
-        
-        print(f"🎯 Found {len(eligible_programmes)} eligible programmes")
-        print(f"🚫 Filtered out {programmes_bypassed} programmes due to subject requirements")
-        
+                eligible_programmes.append({
+                    'programme_code': programme['programme_code'],
+                    'programme_name': programme['programme_name'],
+                    'university': programme['university'],
+                    'cluster_points': programme['cluster_points'],
+                    'required_cluster': programme['cluster_points'],
+                })
+
         return Response({
-            'eligible_programmes': eligible_programmes,
-            'total_found': len(eligible_programmes),
-            'database_total': len(ALL_PROGRAMMES),
-            'programmes_filtered': programmes_bypassed,
-            'message': f'Found {len(eligible_programmes)} courses matching your criteria',
-            'note': '✅ Now checking both cluster points AND ACTUAL KUCCPS subject requirements'
+            "message": "Success",
+            "eligible_programmes": eligible_programmes,
+            "total_found": len(eligible_programmes)
         })
-        
+
     except Exception as e:
-        print(f"❌ Error in eligibility check: {e}")
         return Response({
-            'eligible_programmes': [],
-            'total_found': 0,
-            'message': f'❌ System Error: {str(e)}'
+            "error": str(e),
+            "eligible_programmes": [],
+            "total_found": 0
         }, status=500)
-
-@api_view(['GET'])
-def check_database(request):
-    if not ALL_PROGRAMMES:
-        return Response({
-            'total_programmes': 0,
-            'status': 'error',
-            'message': '❌ Programme data not loaded. CSV file may be missing or corrupted.'
-        }, status=500)
-    
-    return Response({
-        'total_programmes': len(ALL_PROGRAMMES),
-        'status': 'working',
-        'message': f'✅ Using CSV data with {len(ALL_PROGRAMMES)} programmes'
-    })
-
-@api_view(['POST'])
-def pay(request):
-    try:
-        phone = request.data.get("phone")
-        amount = request.data.get("amount")
-        if not phone or not amount:
-            return Response({"error": "Phone and amount are required"}, status=400)
-        return Response({
-            "success": True,
-            "message": "Payment initiated successfully!",
-            "phone": phone,
-            "amount": amount,
-            "transaction_id": "TEST_12345"
-        })
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
-
 @api_view(['POST'])
 def download_courses_pdf(request):
     try:
