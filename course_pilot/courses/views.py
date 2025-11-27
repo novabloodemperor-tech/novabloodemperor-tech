@@ -27,12 +27,12 @@ NAME_TO_CODE = {
     "chemistry": ["CHE"],
     "physics": ["PHY"],
     "geography": ["GEO"],
-    "history": ["HIS", "HAG"],  # CSV may use HAG / HIS
+    "history": ["HIS", "HAG"],
     "cre": ["CRE"],
     "religious education": ["CRE", "IRE"],
     "ire": ["IRE"],
     "agriculture": ["AGR"],
-    "business studies": ["BST", "BUS"],  # CSV uses BST code for Business Studies
+    "business studies": ["BST", "BUS"],
     "business": ["BST", "BUS"],
     "computer studies": ["CMP", "CS"],
     "computer science": ["CS", "CMP"],
@@ -42,15 +42,14 @@ NAME_TO_CODE = {
     "german": ["GER"],
     "arabic": ["ARB"],
     "home science": ["HSC"],
-    # add more synonyms as needed
 }
 
-# Some CSV tokens may appear with slashes/variants, normalize them to canonical code
+# Normalize CSV aliases to canonical codes
 ALIAS_TO_CODE = {
     "HAG": "HIS",
     "HIS": "HIS",
     "GSC": "GSC",
-    "CMP": "CS",  # we will allow both CMP and CS when matching
+    "CMP": "CS",
     "CS": "CS",
     "BST": "BST",
     "BUS": "BST",
@@ -63,10 +62,9 @@ ALIAS_TO_CODE = {
     "CRE": "CRE",
     "IRE": "IRE",
     "AGR": "AGR",
-    # ... extend if you see more codes in CSV
 }
 
-# Regex to extract code prefix e.g. "MAT A(121)" -> "MAT", "BIO(231)" -> "BIO"
+# Regex to extract prefix: e.g. "MAT A(121)" -> "MAT"
 CODE_PREFIX_RE = re.compile(r'\b([A-Z]{2,4})\b')
 
 # ------------------------
@@ -93,9 +91,8 @@ def load_all_programmes():
     try:
         with open(csv_file, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
-            header = next(reader, None)  # skip header if present
+            header = next(reader, None)  # skip header
             for row in reader:
-                # Ensure row long enough
                 if len(row) < 6:
                     continue
                 try:
@@ -103,41 +100,71 @@ def load_all_programmes():
                     university = row[2].strip()
                     programme_name = row[3].strip()
 
-                    # 2024 cluster points is column index 5 (0-based)
-                    cp_raw = row[5].strip() if len(row) > 5 else ""
-                    try:
-                        cluster_points = float(cp_raw) if cp_raw not in ("", "-", None) else 0.0
-                    except:
-                        # if comma decimal or other format, try replace
-                        cp_clean = cp_raw.replace(",", ".")
-                        cluster_points = float(cp_clean) if cp_clean not in ("", "-", None) else 0.0
+                    # ------------------------------------------
+                    # ✔️ UPDATED CLUSTER POINT PARSER (your new block)
+                    # ------------------------------------------
+                    # Column indices based on your CSV:
+                    # 0: PROG CODE
+                    # 1: INSTITUTION
+                    # 2: NAME
+                    # 3: PROGRAMME NAME
+                    # 4: CUTOFF 2024
+                    # 5: CUTOFF 2023
 
-                    # requirements columns (SUBJECT 1..4) are indices 6..9
+                    cp2024_raw = row[4].strip() if len(row) > 4 else ""
+                    cp2023_raw = row[5].strip() if len(row) > 5 else ""
+
+                    def parse_cp(value):
+                        try:
+                            if value not in ("", "-", "NA", "N/A", None):
+                                return float(value.replace(",", "."))
+                        except:
+                            pass
+                        return None
+
+                    # First priority = 2024 cutoff
+                    cp2024 = parse_cp(cp2024_raw)
+
+                    if cp2024 is not None:
+                        cluster_points = cp2024
+                    else:
+                        # fallback = 2023 cutoff
+                        cp2023 = parse_cp(cp2023_raw)
+                        if cp2023 is not None:
+                            cluster_points = cp2023
+                        else:
+                            # both missing → zero
+                            cluster_points = 0.0
+                    # ------------------------------------------
+
+                    # SUBJECT REQUIREMENTS (columns 6..9)
                     subj_reqs = []
                     for idx in range(6, 10):
                         if idx < len(row):
                             cell = row[idx]
                             if cell and cell.strip() and cell.strip() not in ("-", "NA", "N/A"):
                                 subj_reqs.append(cell.strip())
+
                     programmes.append({
                         "programme_code": programme_code,
                         "programme_name": programme_name,
                         "university": university,
                         "cluster_points": cluster_points,
-                        "requirements": subj_reqs  # list of up to 4 strings
+                        "requirements": subj_reqs
                     })
+
                 except Exception as e:
-                    # skip malformed row but continue
                     print(f"Skipping row due to parse error: {e}")
                     continue
+
         print(f"✅ Loaded {len(programmes)} programmes from CSV: {csv_file}")
         return programmes
+
     except Exception as e:
         print(f"❌ Error reading CSV: {e}")
         return []
 
 ALL_PROGRAMMES = load_all_programmes()
-
 
 # ------------------------
 # HELPERS
@@ -145,43 +172,33 @@ ALL_PROGRAMMES = load_all_programmes()
 def normalize_subject_name(name: str):
     if not name:
         return None
-    key = name.strip().lower()
-    return key
+    return name.strip().lower()
 
 def student_grades_to_code_map(student_grades: dict):
-    """
-    Convert frontend grades dict { "Mathematics": "B+" } to code->grade mapping,
-    e.g. { "MAT": "B+", "ENG": "C" }
-    """
     code_grade = {}
     for name, grade in (student_grades or {}).items():
         if not name or not grade:
             continue
         key = normalize_subject_name(name)
-        # try direct mapping
         codes = NAME_TO_CODE.get(key)
+
         if not codes:
-            # attempt heuristic: take first 3 letters uppercase
             heuristic = re.sub(r'[^A-Za-z]', '', key)[:3].upper()
             codes = [heuristic]
+
         for code in codes:
-            # canonical via alias mapping
             canon = ALIAS_TO_CODE.get(code, code)
             code_grade[canon] = grade.strip().upper()
+
     return code_grade
 
 def extract_codes_from_requirement_token(token: str):
-    """
-    Given a token like "BIO(231)" or "MAT A(121)" or "HAG / HIS" extract list of code prefixes
-    """
     if not token:
         return []
-    # normalize separators
     token = token.replace("/", "/").replace(" / ", "/")
     parts = [p.strip() for p in re.split(r'[\/;|]', token) if p.strip()]
     codes = []
     for p in parts:
-        # find code-like parts
         m = CODE_PREFIX_RE.search(p.upper())
         if m:
             code = m.group(1)
@@ -190,18 +207,9 @@ def extract_codes_from_requirement_token(token: str):
     return codes
 
 def parse_requirement_cell(cell_text: str):
-    """
-    Parse one requirement cell like:
-      "MAT A(121):C+"
-      "BIO(231)/CHE(233)/PHY(232):C"
-    Returns list of groups: each group is (list_of_codes, required_grade)
-    For a single cell, we return a list with one group.
-    """
     if not cell_text or not str(cell_text).strip():
         return []
     text = str(cell_text).strip()
-    # Some rows could have multiple requirements separated by commas within a cell - treat cell as single group.
-    # Split on ':' to separate subjects and grade
     try:
         if ":" in text:
             left, right = text.rsplit(":", 1)
@@ -209,38 +217,25 @@ def parse_requirement_cell(cell_text: str):
             codes = extract_codes_from_requirement_token(left)
             if codes:
                 return [(codes, required_grade)]
-            else:
-                return []
+            return []
         else:
-            # if no colon, try to find grade token at end e.g. "... C+" -> last token
             parts = text.split()
             possible_grade = parts[-1].strip().upper()
             if possible_grade in GRADE_VALUE:
-                # subjects are everything before last token
                 left = " ".join(parts[:-1])
                 codes = extract_codes_from_requirement_token(left)
                 return [(codes, possible_grade)] if codes else []
-            else:
-                return []
-    except Exception as e:
-        print(f"Error parsing requirement cell '{cell_text}': {e}")
+            return []
+    except:
         return []
 
 def meets_group_requirement(codes: list, required_grade: str, student_code_grade_map: dict):
-    """
-    codes: list of possible code prefixes (OR group)
-    required_grade: e.g. 'C+'
-    student_code_grade_map: e.g. {'MAT': 'B+', 'CHE': 'C'}
-    If student has any of the codes with >= required_grade -> True
-    """
     if not codes:
-        return True  # empty group -> treat as satisfied
+        return True
     required_value = GRADE_VALUE.get(required_grade, 0)
     for code in codes:
-        # student may have code directly or equivalent alias
         stud_grade = student_code_grade_map.get(code)
         if not stud_grade:
-            # try alternate aliases (e.g. 'CS' vs 'CMP')
             for alias, canon in ALIAS_TO_CODE.items():
                 if canon == code and alias in student_code_grade_map:
                     stud_grade = student_code_grade_map[alias]
@@ -268,26 +263,22 @@ def check_eligibility(request):
         user_cluster_points = float(data.get('cluster_points', 0))
         user_grades = data.get('grades', {})
 
-        # Convert student grades (names) -> code->grade map
         student_code_grade_map = student_grades_to_code_map(user_grades)
-
         eligible_programmes = []
         filtered_out = 0
 
         for prog in ALL_PROGRAMMES:
             prog_cp = prog.get('cluster_points', 0)
             if user_cluster_points < prog_cp:
-                continue  # fails cluster points
+                continue
 
-            # Collect all requirement groups from SUBJECT 1-4 cells
-            requirements_cells = prog.get('requirements', [])  # list up to 4 strings
+            requirements_cells = prog.get('requirements', [])
             groups = []
             for cell in requirements_cells:
                 parsed = parse_requirement_cell(cell)
                 if parsed:
                     groups.extend(parsed)
 
-            # If no parsed requirements (empty) --> allow by cluster points only
             if not groups:
                 eligible_programmes.append({
                     'programme_code': prog.get('programme_code'),
@@ -298,11 +289,9 @@ def check_eligibility(request):
                 })
                 continue
 
-            # Evaluate every group (AND across groups)
             all_groups_met = True
             for codes, req_grade in groups:
-                met = meets_group_requirement(codes, req_grade, student_code_grade_map)
-                if not met:
+                if not meets_group_requirement(codes, req_grade, student_code_grade_map):
                     all_groups_met = False
                     break
 
@@ -324,6 +313,7 @@ def check_eligibility(request):
             'programmes_filtered': filtered_out,
             'message': f'Found {len(eligible_programmes)} programmes matching criteria (cluster + subjects)'
         })
+
     except Exception as e:
         print(f"Eligibility error: {e}")
         return Response({
@@ -332,9 +322,8 @@ def check_eligibility(request):
             'message': f'Error: {str(e)}'
         }, status=500)
 
-
 # ------------------------
-# Health / DB check
+# Health Check
 # ------------------------
 @api_view(['GET'])
 def check_database(request):
@@ -343,9 +332,8 @@ def check_database(request):
         'message': 'Programme data loaded successfully.' if ALL_PROGRAMMES else 'No programme data loaded.'
     })
 
-
 # ------------------------
-# Payment (simple stub)
+# Payment Stub
 # ------------------------
 @api_view(['POST'])
 def pay(request):
@@ -355,9 +343,8 @@ def pay(request):
         return Response({'error': 'Phone and amount required'}, status=400)
     return Response({'success': True, 'transaction_id': 'TEST_12345'})
 
-
 # ------------------------
-# PDF download (keeps your previous logic)
+# PDF DOWNLOAD
 # ------------------------
 @api_view(['POST'])
 def download_courses_pdf(request):
@@ -394,5 +381,6 @@ def download_courses_pdf(request):
         response = HttpResponse(pdf, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="eligible_courses_{user_cluster_points}.pdf"'
         return response
+    
     except Exception as e:
         return Response({'error': str(e)}, status=500)
