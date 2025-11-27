@@ -8,3 +8,4 @@ urlpatterns = [
     path('version/', lambda request: HttpResponse("Version: Pay endpoint included - Latest")),  # ADD THIS
     path('', lambda request: HttpResponse("Backend is running!")),
 ]
+
