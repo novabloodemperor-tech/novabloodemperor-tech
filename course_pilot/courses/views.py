@@ -101,16 +101,8 @@ def load_all_programmes():
                     programme_name = row[3].strip()
 
                     # ------------------------------------------
-                    # ✔️ UPDATED CLUSTER POINT PARSER (your new block)
+                    # ✔️ EXACT UPDATED CLUSTER BLOCK (your version)
                     # ------------------------------------------
-                    # Column indices based on your CSV:
-                    # 0: PROG CODE
-                    # 1: INSTITUTION
-                    # 2: NAME
-                    # 3: PROGRAMME NAME
-                    # 4: CUTOFF 2024
-                    # 5: CUTOFF 2023
-
                     cp2024_raw = row[4].strip() if len(row) > 4 else ""
                     cp2023_raw = row[5].strip() if len(row) > 5 else ""
 
@@ -122,19 +114,15 @@ def load_all_programmes():
                             pass
                         return None
 
-                    # First priority = 2024 cutoff
                     cp2024 = parse_cp(cp2024_raw)
+                    cp2023 = parse_cp(cp2023_raw)
 
                     if cp2024 is not None:
                         cluster_points = cp2024
+                    elif cp2023 is not None:
+                        cluster_points = cp2023
                     else:
-                        # fallback = 2023 cutoff
-                        cp2023 = parse_cp(cp2023_raw)
-                        if cp2023 is not None:
-                            cluster_points = cp2023
-                        else:
-                            # both missing → zero
-                            cluster_points = 0.0
+                        cluster_points = 0.0
                     # ------------------------------------------
 
                     # SUBJECT REQUIREMENTS (columns 6..9)
@@ -153,8 +141,8 @@ def load_all_programmes():
                         "requirements": subj_reqs
                     })
 
-                except Exception as e:
-                    print(f"Skipping row due to parse error: {e}")
+                except Exception:
+                    # removed "Skipping row due to parse error"
                     continue
 
         print(f"✅ Loaded {len(programmes)} programmes from CSV: {csv_file}")
