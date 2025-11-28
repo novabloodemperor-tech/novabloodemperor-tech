@@ -350,26 +350,73 @@ def download_courses_pdf(request):
             uni = course.get("university", "Unknown University")
             grouped.setdefault(uni, []).append(course)
 
-        # Sort universities alphabetically
-        sorted_unis = sorted(grouped.keys())
+        # Sort universities (highest → lowest number of courses)
+        sorted_unis = sorted(grouped.items(), key=lambda x: len(x[1]), reverse=True)
 
+        # PDF Setup
         buffer = io.BytesIO()
         p = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
 
-        # Title Page
+        # -------------------------
+        # PAGE 1 — SUMMARY PAGE
+        # -------------------------
         p.setFont("Helvetica-Bold", 18)
         p.drawString(100, 750, "Eligible Course Report")
-        
+
         p.setFont("Helvetica", 12)
         p.drawString(100, 720, f"Cluster Points: {user_cluster_points}")
-        p.drawString(100, 700, f"Total Institutions: {len(sorted_unis)}")
+        p.drawString(100, 700, f"Total Universities: {len(sorted_unis)}")
         p.drawString(100, 680, f"Total Courses: {len(eligible_programmes)}")
 
-        p.showPage()  # Move to the course listing pages
+        # University list (top to bottom)
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(100, 640, "Universities You Qualify For:")
 
-        # Iterate each institution
-        for uni in sorted_unis:
-            courses = sorted(grouped[uni], key=lambda c: c.get("programme_name", ""))
+        y = 620
+        p.setFont("Helvetica", 10)
+
+        for index, (uni, uni_courses) in enumerate(sorted_unis, start=1):
+            line = f"{index}. {uni}  ......  {len(uni_courses)} courses"
+
+            if y < 60:
+                p.showPage()
+                y = 750
+                p.setFont("Helvetica-Bold", 14)
+                p.drawString(100, 750, "Universities You Qualify For (continued):")
+                y -= 40
+                p.setFont("Helvetica", 10)
+
+            p.drawString(100, y, line)
+            y -= 15
+
+        p.showPage()  # Move to course list pages
+
+        # -------------------------------------
+        # PAGE 2 → Detailed pages per university
+        # -------------------------------------
+        def wrap_text(text, max_width, pdf):
+            """
+            Wraps long text to fit page width.
+            Uses small indentation for wrapped lines.
+            """
+            words = text.split()
+            lines = []
+            current = words[0]
+
+            for word in words[1:]:
+                if pdf.stringWidth(current + " " + word, "Helvetica", 10) < max_width:
+                    current += " " + word
+                else:
+                    lines.append(current)
+                    current = word
+            lines.append(current)
+            return lines
+
+        for uni, uni_courses in sorted_unis:
+
+            # Sort courses alphabetically
+            uni_courses = sorted(uni_courses, key=lambda c: c.get("programme_name", ""))
 
             p.setFont("Helvetica-Bold", 14)
             p.drawString(100, 750, uni)
@@ -377,23 +424,38 @@ def download_courses_pdf(request):
             y = 720
             p.setFont("Helvetica", 10)
 
-            for i, course in enumerate(courses, start=1):
-                if y < 50:
-                    p.showPage()
-                    p.setFont("Helvetica-Bold", 14)
-                    p.drawString(100, 750, f"{uni} (continued)")
-                    p.setFont("Helvetica", 10)
-                    y = 720
+            for i, course in enumerate(uni_courses, start=1):
 
                 name = course.get("programme_name", "Unknown Programme")
                 code = course.get("programme_code", "N/A")
                 points = course.get("cluster_points", "N/A")
 
-                p.drawString(120, y, f"{i}. {name}  ({code})  –  {points} pts")
-                y -= 14
+                text = f"{i}. {name} ({code}) – {points} pts"
+
+                # Wrap long programme names
+                wrapped = wrap_text(text, 420, p)  # fit within width
+
+                for line_index, line in enumerate(wrapped):
+                    if y < 50:
+                        p.showPage()
+                        p.setFont("Helvetica-Bold", 14)
+                        p.drawString(100, 750, f"{uni} (continued)")
+                        p.setFont("Helvetica", 10)
+                        y = 720
+
+                    # indent continuation line
+                    if line_index > 0:
+                        p.drawString(120, y, line)   # small indent
+                    else:
+                        p.drawString(100, y, line)
+
+                    y -= 14
+
+                y -= 5  # small spacing after each course entry
 
             p.showPage()
 
+        # Save PDF
         p.save()
         pdf = buffer.getvalue()
         buffer.close()
