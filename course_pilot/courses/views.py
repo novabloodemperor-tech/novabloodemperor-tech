@@ -344,31 +344,63 @@ def download_courses_pdf(request):
         if not eligible_programmes:
             return Response({'error': 'No courses to download'}, status=400)
 
+        # Group courses by university
+        grouped = {}
+        for course in eligible_programmes:
+            uni = course.get("university", "Unknown University")
+            grouped.setdefault(uni, []).append(course)
+
+        # Sort universities alphabetically
+        sorted_unis = sorted(grouped.keys())
+
         buffer = io.BytesIO()
         p = canvas.Canvas(buffer, pagesize=letter)
 
-        p.setFont("Helvetica-Bold", 16)
+        # Title Page
+        p.setFont("Helvetica-Bold", 18)
         p.drawString(100, 750, "Eligible Course Report")
+        
         p.setFont("Helvetica", 12)
         p.drawString(100, 720, f"Cluster Points: {user_cluster_points}")
-        p.drawString(100, 700, f"Total Courses: {len(eligible_programmes)}")
+        p.drawString(100, 700, f"Total Institutions: {len(sorted_unis)}")
+        p.drawString(100, 680, f"Total Courses: {len(eligible_programmes)}")
 
-        y = 660
-        p.setFont("Helvetica", 9)
-        for i, course in enumerate(eligible_programmes):
-            if y < 50:
-                p.showPage()
-                y = 750
-            p.drawString(100, y, f"{i+1}. {course.get('programme_name')} ({course.get('programme_code')}) - {course.get('university')}")
-            y -= 15
+        p.showPage()  # Move to the course listing pages
+
+        # Iterate each institution
+        for uni in sorted_unis:
+            courses = sorted(grouped[uni], key=lambda c: c.get("programme_name", ""))
+
+            p.setFont("Helvetica-Bold", 14)
+            p.drawString(100, 750, uni)
+
+            y = 720
+            p.setFont("Helvetica", 10)
+
+            for i, course in enumerate(courses, start=1):
+                if y < 50:
+                    p.showPage()
+                    p.setFont("Helvetica-Bold", 14)
+                    p.drawString(100, 750, f"{uni} (continued)")
+                    p.setFont("Helvetica", 10)
+                    y = 720
+
+                name = course.get("programme_name", "Unknown Programme")
+                code = course.get("programme_code", "N/A")
+                points = course.get("cluster_points", "N/A")
+
+                p.drawString(120, y, f"{i}. {name}  ({code})  –  {points} pts")
+                y -= 14
+
+            p.showPage()
 
         p.save()
         pdf = buffer.getvalue()
         buffer.close()
 
-        response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="eligible_courses_{user_cluster_points}.pdf"'
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response['Content-Disposition'] = f'attachment; filename=\"eligible_courses_{user_cluster_points}.pdf\"'
         return response
-    
+
     except Exception as e:
         return Response({'error': str(e)}, status=500)
